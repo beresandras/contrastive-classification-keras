@@ -38,13 +38,15 @@ class ContrastiveModel(keras.Model):
         self.probe_accuracy.reset_states()
 
     def update_contrastive_accuracy(self, projections_1, projections_2):
+        # cosine similarity: the dot product of the l2-normalized feature vectors
         projections_1 = tf.math.l2_normalize(projections_1, axis=1)
         projections_2 = tf.math.l2_normalize(projections_2, axis=1)
-
-        batch_size = tf.shape(projections_1)[0]
-        contrastive_labels = tf.range(batch_size)
         similarities = tf.matmul(projections_1, projections_2, transpose_b=True)
 
+        # the similarity between the representations of two augmented views of the
+        # same image should be higher than their similarity with other views
+        batch_size = tf.shape(projections_1)[0]
+        contrastive_labels = tf.range(batch_size)
         self.contrastive_accuracy.update_state(
             tf.concat([contrastive_labels, contrastive_labels], axis=0),
             tf.concat([similarities, tf.transpose(similarities)], axis=0),
@@ -57,14 +59,15 @@ class ContrastiveModel(keras.Model):
     def train_step(self, data):
         (unlabeled_images, _), (labeled_images, labels) = data
 
+        # both labeled and unlabeled images are used, without labels
         images = tf.concat((unlabeled_images, labeled_images), axis=0)
+        # each image is augmented twice, differently
         augmented_images_1 = self.contrastive_augmenter(images)
         augmented_images_2 = self.contrastive_augmenter(images)
         with tf.GradientTape() as tape:
-            features_1 = self.encoder(augmented_images_1)
-            features_2 = self.encoder(augmented_images_2)
-            projections_1 = self.projection_head(features_1)
-            projections_2 = self.projection_head(features_2)
+            # the representations are passed through a projection mlp
+            projections_1 = self.projection_head(self.encoder(augmented_images_1))
+            projections_2 = self.projection_head(self.encoder(augmented_images_2))
             contrastive_loss = self.contrastive_loss(projections_1, projections_2)
         gradients = tape.gradient(
             contrastive_loss,
@@ -78,6 +81,7 @@ class ContrastiveModel(keras.Model):
         )
         self.update_contrastive_accuracy(projections_1, projections_2)
 
+        # labels are only used in evalutation for an on-the-fly logistic regression
         preprocessed_images = self.classification_augmenter(labeled_images)
         with tf.GradientTape() as tape:
             features = self.encoder(preprocessed_images)
@@ -129,6 +133,7 @@ class MomentumContrastiveModel(ContrastiveModel):
         )
         self.momentum_coeff = momentum_coeff
 
+        # the momentum networks are initialized from their online counterparts
         self.m_encoder = tf.keras.models.clone_model(self.encoder)
         self.m_projection_head = tf.keras.models.clone_model(self.projection_head)
 
@@ -179,6 +184,7 @@ class MomentumContrastiveModel(ContrastiveModel):
         )
         self.probe_accuracy.update_state(labels, class_logits)
 
+        # the momentum networks are updated by exponential moving average
         for weight, m_weight in zip(self.encoder.weights, self.m_encoder.weights):
             m_weight.assign(
                 self.momentum_coeff * m_weight + (1 - self.momentum_coeff) * weight
@@ -215,7 +221,10 @@ class BarlowTwins(ContrastiveModel):
             projection_head,
             linear_probe,
         )
+        # weighting coefficient between the two loss components
         self.redundancy_reduction_weight = redundancy_reduction_weight
+        # its value differs from the paper, because the loss implementation has been
+        # changed to be invariant to the encoder output dimensions (feature dim)
 
     def contrastive_loss(self, projections_1, projections_2):
         projections_1 = (
@@ -225,6 +234,7 @@ class BarlowTwins(ContrastiveModel):
             projections_2 - tf.reduce_mean(projections_2, axis=0)
         ) / tf.math.reduce_std(projections_2, axis=0)
 
+        # the cross correlation of image representations should be the identity matrix
         batch_size = tf.shape(projections_1, out_type=tf.float32)[0]
         feature_dim = tf.shape(projections_1, out_type=tf.float32)[1]
         cross_correlation = (
@@ -232,6 +242,8 @@ class BarlowTwins(ContrastiveModel):
         )
         squared_errors = (tf.eye(feature_dim) - cross_correlation) ** 2
 
+        # invariance loss = average diagonal error
+        # redundancy reduction loss = average off-diagonal error
         invariance_loss = (
             tf.reduce_sum(squared_errors * tf.eye(feature_dim)) / feature_dim
         )
@@ -264,12 +276,17 @@ class SimCLR(ContrastiveModel):
         self.temperature = temperature
 
     def contrastive_loss(self, projections_1, projections_2):
+        # InfoNCE loss (information noise-contrastive estimation)
+        # NT-Xent loss (normalized temperature-scaled cross entropy)
+
+        # cosine similarity: the dot product of the l2-normalized feature vectors
         projections_1 = tf.math.l2_normalize(projections_1, axis=1)
         projections_2 = tf.math.l2_normalize(projections_2, axis=1)
         similarities = (
             tf.matmul(projections_1, projections_2, transpose_b=True) / self.temperature
         )
 
+        # the temperature-scaled similarities are used as logits for cross-entropy
         batch_size = tf.shape(projections_1)[0]
         contrastive_labels = tf.range(batch_size)
         loss = keras.losses.sparse_categorical_crossentropy(
@@ -301,6 +318,8 @@ class MoCo(MomentumContrastiveModel):
         )
         self.temperature = temperature
 
+        # no momentum-feature queue is implemented yet
+
     def contrastive_loss(
         self,
         projections_1,
@@ -308,6 +327,8 @@ class MoCo(MomentumContrastiveModel):
         m_projections_1,
         m_projections_2,
     ):
+        # similar to the SimCLR loss, however it uses the momentum networks'
+        # representations of the differently augmented views as targets
         projections_1 = tf.math.l2_normalize(projections_1, axis=1)
         projections_2 = tf.math.l2_normalize(projections_2, axis=1)
         m_projections_1 = tf.math.l2_normalize(m_projections_1, axis=1)
