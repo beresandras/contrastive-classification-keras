@@ -2,7 +2,7 @@
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/beresandras/contrastive-classification-keras/blob/master/contrastive_classification_keras.ipynb)
 
-![contrastive accuracy plot](./assets/contrastive accuracy.png)
+![contrastive accuracy plot](./assets/contr_acc.png)
 
-![linear probe accuracy plot](./assets/linear probe accuracy.png)
+![linear probe accuracy plot](./assets/probe_acc.png)
 
