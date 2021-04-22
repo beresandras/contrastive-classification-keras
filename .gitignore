@@ -1,6 +1,5 @@
 *.pyc
 *.pkl
-*.png
 
 utils.py
 
