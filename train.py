@@ -103,4 +103,4 @@ history = model.fit(train_dataset, epochs=num_epochs, validation_data=test_datas
 
 # save history
 with open("{}.pkl".format(Algorithm.__name__), "wb") as write_file:
-    pickle.dump(history, write_file)
+    pickle.dump(history.history, write_file)
