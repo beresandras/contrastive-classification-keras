@@ -7,7 +7,7 @@ This repository contains an implementation for 3 self-supervised instance-level 
 
 The codebase follows modern Tensorflow2 + Keras best practices and the implementation seeks to be as concise and readable as possible. The codebase is well commented, and has self-explanatory naming. This implementation is intended to be used as an easy-to-use baseline instead of as a line-by-line reproduction of the papers. 
 
-Training each algorithm takes appr. 30 minutes in a Colab Notebook: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/beresandras/contrastive-classification-keras/blob/master/contrastive_classification_keras.ipynb)
+One training takes 40-60 minutes in a Colab Notebook: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/beresandras/contrastive-classification-keras/blob/master/contrastive_classification_keras.ipynb)
 
 ## Design choices:
 - simple and easy-to-read implementation over accuracy to the finest implementation details
@@ -20,6 +20,7 @@ Training each algorithm takes appr. 30 minutes in a Colab Notebook: [![Open In C
     - random horizontal flip: introduces the prior that the horizontal directions are more interchangeable than the vertical ones
     - random resized crop: forces the model to encode different parts of the same image similarly
     - random color jitter: prevents a trivial color histogram-based solution to the task by distorting color histograms
+- dataset: [STL10](https://ai.stanford.edu/~acoates/stl10/), a semi-supervised dataset with 100.000 unlabeled + 5000 labeled images, well suited for self-supervised learning experiments
 
 ## Results
 ![linear probe accuracy plot](./assets/probe_acc.png)
