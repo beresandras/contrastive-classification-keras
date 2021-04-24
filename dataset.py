@@ -24,15 +24,15 @@ def prepare_dataset(steps_per_epoch):
         .shuffle(buffer_size=5000)
         .batch(labeled_batch_size, drop_remainder=True)
     )
-    # labeled and unlabeled datasets are zipped
-    train_dataset = tf.data.Dataset.zip(
-        (unlabeled_train_dataset, labeled_train_dataset)
-    ).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-
     test_dataset = (
         tfds.load("stl10", split="test", as_supervised=True)
         .batch(batch_size)
         .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     )
+
+    # labeled and unlabeled datasets are zipped together
+    train_dataset = tf.data.Dataset.zip(
+        (unlabeled_train_dataset, labeled_train_dataset)
+    ).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
     return batch_size, train_dataset, labeled_train_dataset, test_dataset
