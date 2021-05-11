@@ -151,3 +151,59 @@ class MoCo(MomentumContrastiveModel):
             from_logits=True,
         )
         return loss
+
+
+class DINO(MomentumContrastiveModel):
+    def __init__(
+        self,
+        contrastive_augmenter,
+        classification_augmenter,
+        encoder,
+        projection_head,
+        linear_probe,
+        momentum_coeff,
+        temperature,
+        sharpening,
+    ):
+        super().__init__(
+            contrastive_augmenter,
+            classification_augmenter,
+            encoder,
+            projection_head,
+            linear_probe,
+            momentum_coeff,
+        )
+        self.temperature = temperature
+        self.sharpening = sharpening
+
+    def contrastive_loss(
+        self,
+        projections_1,
+        projections_2,
+        m_projections_1,
+        m_projections_2,
+    ):
+        # this loss does not use any negatives, needs centering + sharpening + momentum
+        # to avoid collapse
+        center = tf.reduce_mean(
+            tf.concat([m_projections_1, m_projections_2], axis=0), axis=0, keepdims=True
+        )
+        target_probabilities_1 = keras.activations.softmax(
+            (m_projections_1 - center) / (self.sharpening * self.temperature)
+        )
+        target_probabilities_2 = keras.activations.softmax(
+            (m_projections_2 - center) / (self.sharpening * self.temperature)
+        )
+
+        pred_probabilities_1 = keras.activations.softmax(
+            projections_1 / self.temperature
+        )
+        pred_probabilities_2 = keras.activations.softmax(
+            projections_2 / self.temperature
+        )
+
+        loss = keras.losses.categorical_crossentropy(
+            tf.concat([target_probabilities_1, target_probabilities_2], axis=0),
+            tf.concat([pred_probabilities_2, pred_probabilities_1], axis=0),
+        )
+        return loss

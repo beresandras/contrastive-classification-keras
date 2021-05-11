@@ -1,9 +1,12 @@
 # Self-supervised Contrastive Learning for Image Classification with Keras
 
-This repository contains an implementation for 3 self-supervised instance-level (image-level) contrastive learning methods:
+This repository contains an implementation for 4 self-supervised instance-level (image-level) contrastive learning methods:
 - [SimCLR](https://arxiv.org/abs/2002.05709)
 - [MoCo](https://arxiv.org/abs/1911.05722) ([v2](https://arxiv.org/abs/2003.04297), [v3](https://arxiv.org/abs/2104.02057))
 - [BarlowTwins](https://arxiv.org/abs/2103.03230)
+- [DINO](https://arxiv.org/abs/2104.14294)
+
+The image augmentation pipeline is a crucial component of all these methods. You can find implementations of other custom Keras image augmentation layers in [this repository](https://github.com/beresandras/image-augmentation-layers-keras).
 
 The codebase follows modern Tensorflow2 + Keras best practices and the implementation seeks to be as concise and readable as possible. The codebase is well commented, and has self-explanatory naming. This implementation is intended to be used as an easy-to-use baseline instead of as a line-by-line reproduction of the papers. 
 

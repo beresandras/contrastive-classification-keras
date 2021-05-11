@@ -63,7 +63,7 @@ class RandomResizedCrop(layers.Layer):
 
 # distorts the color distibutions of images
 class RandomColorJitter(layers.Layer):
-    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0, **kwargs):
+    def __init__(self, brightness, contrast, saturation, hue, **kwargs):
         super().__init__(**kwargs)
 
         # color jitter ranges: (min jitter strength, max jitter strength)
