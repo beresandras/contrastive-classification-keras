@@ -107,6 +107,7 @@ class MoCo(MomentumContrastiveModel):
         linear_probe,
         momentum_coeff,
         temperature,
+        queue_size,
     ):
         super().__init__(
             contrastive_augmenter,
@@ -118,7 +119,13 @@ class MoCo(MomentumContrastiveModel):
         )
         self.temperature = temperature
 
-        # no momentum-feature queue is implemented yet
+        feature_dimensions = encoder.output_shape[1]
+        self.feature_queue = tf.Variable(
+            tf.math.l2_normalize(
+                tf.random.normal(shape=(queue_size, feature_dimensions)), axis=1
+            ),
+            trainable=False,
+        )
 
     def contrastive_loss(
         self,
@@ -134,12 +141,20 @@ class MoCo(MomentumContrastiveModel):
         m_projections_1 = tf.math.l2_normalize(m_projections_1, axis=1)
         m_projections_2 = tf.math.l2_normalize(m_projections_2, axis=1)
 
-        similarities_1 = (
-            tf.matmul(projections_1, m_projections_2, transpose_b=True)
+        similarities_1_2 = (
+            tf.matmul(
+                projections_1,
+                tf.concat((m_projections_2, self.feature_queue), axis=0),
+                transpose_b=True,
+            )
             / self.temperature
         )
-        similarities_2 = (
-            tf.matmul(projections_2, m_projections_1, transpose_b=True)
+        similarities_2_1 = (
+            tf.matmul(
+                projections_2,
+                tf.concat((m_projections_1, self.feature_queue), axis=0),
+                transpose_b=True,
+            )
             / self.temperature
         )
 
@@ -147,8 +162,13 @@ class MoCo(MomentumContrastiveModel):
         contrastive_labels = tf.range(batch_size)
         loss = keras.losses.sparse_categorical_crossentropy(
             tf.concat([contrastive_labels, contrastive_labels], axis=0),
-            tf.concat([similarities_1, similarities_2], axis=0),
+            tf.concat([similarities_1_2, similarities_2_1], axis=0),
             from_logits=True,
+        )
+
+        # feature queue update
+        self.feature_queue.assign(
+            tf.concat([m_projections_1, self.feature_queue[:-batch_size]], axis=0)
         )
         return loss
 

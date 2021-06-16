@@ -23,7 +23,7 @@ width = 128
 hyperparams = {
     SimCLR: {"temperature": 0.1},
     BarlowTwins: {"redundancy_reduction_weight": 10.0},
-    MoCo: {"momentum_coeff": 0.99, "temperature": 0.1},
+    MoCo: {"momentum_coeff": 0.99, "temperature": 0.1, "queue_size": 10000},
     DINO: {"momentum_coeff": 0.8, "temperature": 0.1, "sharpening": 0.25},
 }
 

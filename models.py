@@ -175,7 +175,8 @@ class MomentumContrastiveModel(ContrastiveModel):
 
         preprocessed_images = self.classification_augmenter(labeled_images)
         with tf.GradientTape() as tape:
-            features = self.encoder(preprocessed_images)
+            # the momentum encoder is used here as it moves more slowly
+            features = self.m_encoder(preprocessed_images)
             class_logits = self.linear_probe(features)
             probe_loss = self.probe_loss(labels, class_logits)
         gradients = tape.gradient(probe_loss, self.linear_probe.trainable_weights)
