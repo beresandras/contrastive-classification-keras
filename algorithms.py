@@ -168,7 +168,14 @@ class MoCo(MomentumContrastiveModel):
 
         # feature queue update
         self.feature_queue.assign(
-            tf.concat([m_projections_1, self.feature_queue[:-batch_size]], axis=0)
+            tf.concat(
+                [
+                    m_projections_1,
+                    m_projections_2,
+                    self.feature_queue[: -(2 * batch_size)],
+                ],
+                axis=0,
+            )
         )
         return loss
 
