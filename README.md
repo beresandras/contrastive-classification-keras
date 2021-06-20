@@ -4,18 +4,18 @@ This repository contains an implementation for 4 self-supervised instance-level 
 - [SimCLR](https://arxiv.org/abs/2002.05709)
 - [MoCo](https://arxiv.org/abs/1911.05722) ([v2](https://arxiv.org/abs/2003.04297), [v3](https://arxiv.org/abs/2104.02057))
 - [BarlowTwins](https://arxiv.org/abs/2103.03230)
-- [DINO](https://arxiv.org/abs/2104.14294)
+- [DINO](https://arxiv.org/abs/2104.14294) (negative-free)
+
+Try it out in a Colab Notebook (one training takes 40-60 minutes): [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/beresandras/contrastive-classification-keras/blob/master/contrastive_classification_keras.ipynb)
+
+The codebase follows modern Tensorflow2 + Keras best practices and the implementation seeks to be as concise and readable as possible. This implementation is intended to be used as an easy-to-use baseline instead of as a line-by-line reproduction of the papers.
 
 The image augmentation pipeline is a crucial component of all these methods. You can find implementations of other custom Keras image augmentation layers in [this repository](https://github.com/beresandras/image-augmentation-layers-keras).
-
-The codebase follows modern Tensorflow2 + Keras best practices and the implementation seeks to be as concise and readable as possible. The codebase is well commented, and has self-explanatory naming. This implementation is intended to be used as an easy-to-use baseline instead of as a line-by-line reproduction of the papers. 
-
-One training takes 40-60 minutes in a Colab Notebook: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/beresandras/contrastive-classification-keras/blob/master/contrastive_classification_keras.ipynb)
 
 ## Design choices:
 - simple and easy-to-read implementation over accuracy to the finest implementation details
 - simple feedforward convolutional architecture: 
-    - the methods have to be robust enough to work on simple arhitectures as well
+    - the methods have to be robust enough to work on simple architectures as well
     - this enables the usage of larger batch sizes
     - the shorter training time enables more thorough hyperparameter tuning so that the comparison is fairer
 - no batchnorm layers used for benchmarking: as reported in [CPCv2](https://arxiv.org/abs/1905.09272) and [MoCo](https://arxiv.org/abs/1911.05722), it introduces an intra-batch dependency between samples, which can hurt performance
