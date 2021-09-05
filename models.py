@@ -39,41 +39,41 @@ class ContrastiveModel(keras.Model):
         self.correlation_accuracy.reset_states()
         self.probe_accuracy.reset_states()
 
-    def update_contrastive_accuracy(self, projections_1, projections_2):
+    def update_contrastive_accuracy(self, features_1, features_2):
         # self-supervised metric inspired by the SimCLR loss
 
         # cosine similarity: the dot product of the l2-normalized feature vectors
-        projections_1 = tf.math.l2_normalize(projections_1, axis=1)
-        projections_2 = tf.math.l2_normalize(projections_2, axis=1)
-        similarities = tf.matmul(projections_1, projections_2, transpose_b=True)
+        features_1 = tf.math.l2_normalize(features_1, axis=1)
+        features_2 = tf.math.l2_normalize(features_2, axis=1)
+        similarities = tf.matmul(features_1, features_2, transpose_b=True)
 
         # the similarity between the representations of two augmented views of the
         # same image should be higher than their similarity with other views
-        batch_size = tf.shape(projections_1)[0]
+        batch_size = tf.shape(features_1)[0]
         contrastive_labels = tf.range(batch_size)
         self.contrastive_accuracy.update_state(
             tf.concat([contrastive_labels, contrastive_labels], axis=0),
             tf.concat([similarities, tf.transpose(similarities)], axis=0),
         )
 
-    def update_correlation_accuracy(self, projections_1, projections_2):
+    def update_correlation_accuracy(self, features_1, features_2):
         # self-supervised metric inspired by the BarlowTwins loss
 
         # normalization so that cross-correlation will be between -1 and 1
-        projections_1 = (
-            projections_1 - tf.reduce_mean(projections_1, axis=0)
-        ) / tf.math.reduce_std(projections_1, axis=0)
-        projections_2 = (
-            projections_2 - tf.reduce_mean(projections_2, axis=0)
-        ) / tf.math.reduce_std(projections_2, axis=0)
+        features_1 = (
+            features_1 - tf.reduce_mean(features_1, axis=0)
+        ) / tf.math.reduce_std(features_1, axis=0)
+        features_2 = (
+            features_2 - tf.reduce_mean(features_2, axis=0)
+        ) / tf.math.reduce_std(features_2, axis=0)
 
         # the cross correlation of image representations should be the identity matrix
-        batch_size = tf.shape(projections_1, out_type=tf.float32)[0]
+        batch_size = tf.shape(features_1, out_type=tf.float32)[0]
         cross_correlation = (
-            tf.matmul(projections_1, projections_2, transpose_a=True) / batch_size
+            tf.matmul(features_1, features_2, transpose_a=True) / batch_size
         )
 
-        feature_dim = tf.shape(projections_1)[1]
+        feature_dim = tf.shape(features_1)[1]
         correlation_labels = tf.range(feature_dim)
         self.correlation_accuracy.update_state(
             tf.concat([correlation_labels, correlation_labels], axis=0),
