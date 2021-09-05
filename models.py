@@ -31,13 +31,17 @@ class ContrastiveModel(keras.Model):
         self.probe_loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
         self.contrastive_accuracy = keras.metrics.SparseCategoricalAccuracy()
+        self.correlation_accuracy = keras.metrics.SparseCategoricalAccuracy()
         self.probe_accuracy = keras.metrics.SparseCategoricalAccuracy()
 
     def reset_metrics(self):
         self.contrastive_accuracy.reset_states()
+        self.correlation_accuracy.reset_states()
         self.probe_accuracy.reset_states()
 
     def update_contrastive_accuracy(self, projections_1, projections_2):
+        # self-supervised metric inspired by the SimCLR loss
+
         # cosine similarity: the dot product of the l2-normalized feature vectors
         projections_1 = tf.math.l2_normalize(projections_1, axis=1)
         projections_2 = tf.math.l2_normalize(projections_2, axis=1)
@@ -50,6 +54,30 @@ class ContrastiveModel(keras.Model):
         self.contrastive_accuracy.update_state(
             tf.concat([contrastive_labels, contrastive_labels], axis=0),
             tf.concat([similarities, tf.transpose(similarities)], axis=0),
+        )
+
+    def update_correlation_accuracy(self, projections_1, projections_2):
+        # self-supervised metric inspired by the BarlowTwins loss
+
+        # normalization so that cross-correlation will be between -1 and 1
+        projections_1 = (
+            projections_1 - tf.reduce_mean(projections_1, axis=0)
+        ) / tf.math.reduce_std(projections_1, axis=0)
+        projections_2 = (
+            projections_2 - tf.reduce_mean(projections_2, axis=0)
+        ) / tf.math.reduce_std(projections_2, axis=0)
+
+        # the cross correlation of image representations should be the identity matrix
+        batch_size = tf.shape(projections_1, out_type=tf.float32)[0]
+        cross_correlation = (
+            tf.matmul(projections_1, projections_2, transpose_a=True) / batch_size
+        )
+
+        feature_dim = tf.shape(projections_1)[1]
+        correlation_labels = tf.range(feature_dim)
+        self.correlation_accuracy.update_state(
+            tf.concat([correlation_labels, correlation_labels], axis=0),
+            tf.concat([cross_correlation, tf.transpose(cross_correlation)], axis=0),
         )
 
     @abstractmethod
@@ -65,9 +93,11 @@ class ContrastiveModel(keras.Model):
         augmented_images_1 = self.contrastive_augmenter(images)
         augmented_images_2 = self.contrastive_augmenter(images)
         with tf.GradientTape() as tape:
+            features_1 = self.encoder(augmented_images_1)
+            features_2 = self.encoder(augmented_images_2)
             # the representations are passed through a projection mlp
-            projections_1 = self.projection_head(self.encoder(augmented_images_1))
-            projections_2 = self.projection_head(self.encoder(augmented_images_2))
+            projections_1 = self.projection_head(features_1)
+            projections_2 = self.projection_head(features_2)
             contrastive_loss = self.contrastive_loss(projections_1, projections_2)
         gradients = tape.gradient(
             contrastive_loss,
@@ -79,7 +109,8 @@ class ContrastiveModel(keras.Model):
                 self.encoder.trainable_weights + self.projection_head.trainable_weights,
             )
         )
-        self.update_contrastive_accuracy(projections_1, projections_2)
+        self.update_contrastive_accuracy(features_1, features_2)
+        self.update_correlation_accuracy(features_1, features_2)
 
         # labels are only used in evalutation for an on-the-fly logistic regression
         preprocessed_images = self.classification_augmenter(labeled_images)
@@ -96,6 +127,7 @@ class ContrastiveModel(keras.Model):
         return {
             "c_loss": contrastive_loss,
             "c_acc": self.contrastive_accuracy.result(),
+            "r_acc": self.correlation_accuracy.result(),
             "p_loss": probe_loss,
             "p_acc": self.probe_accuracy.result(),
         }
@@ -154,10 +186,14 @@ class MomentumContrastiveModel(ContrastiveModel):
         augmented_images_1 = self.contrastive_augmenter(images)
         augmented_images_2 = self.contrastive_augmenter(images)
         with tf.GradientTape() as tape:
-            projections_1 = self.projection_head(self.encoder(augmented_images_1))
-            projections_2 = self.projection_head(self.encoder(augmented_images_2))
-            m_projections_1 = self.m_projection_head(self.m_encoder(augmented_images_1))
-            m_projections_2 = self.m_projection_head(self.m_encoder(augmented_images_2))
+            features_1 = self.encoder(augmented_images_1)
+            features_2 = self.encoder(augmented_images_2)
+            projections_1 = self.projection_head(features_1)
+            projections_2 = self.projection_head(features_2)
+            m_features_1 = self.m_encoder(augmented_images_1)
+            m_features_2 = self.m_encoder(augmented_images_2)
+            m_projections_1 = self.m_projection_head(m_features_1)
+            m_projections_2 = self.m_projection_head(m_features_2)
             contrastive_loss = self.contrastive_loss(
                 projections_1, projections_2, m_projections_1, m_projections_2
             )
@@ -171,7 +207,8 @@ class MomentumContrastiveModel(ContrastiveModel):
                 self.encoder.trainable_weights + self.projection_head.trainable_weights,
             )
         )
-        self.update_contrastive_accuracy(projections_1, projections_2)
+        self.update_contrastive_accuracy(m_features_1, m_features_2)
+        self.update_correlation_accuracy(m_features_1, m_features_2)
 
         preprocessed_images = self.classification_augmenter(labeled_images)
         with tf.GradientTape() as tape:
@@ -200,6 +237,7 @@ class MomentumContrastiveModel(ContrastiveModel):
         return {
             "c_loss": contrastive_loss,
             "c_acc": self.contrastive_accuracy.result(),
+            "r_acc": self.correlation_accuracy.result(),
             "p_loss": probe_loss,
             "p_acc": self.probe_accuracy.result(),
         }

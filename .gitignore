@@ -1,6 +1,7 @@
 *.pyc
 *.pkl
 
+notes.txt
 utils.py
 
 .vscode/
