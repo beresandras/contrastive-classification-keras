@@ -212,6 +212,13 @@ class DINO(MomentumContrastiveModel):
     ):
         # this loss does not use any negatives, needs centering + sharpening + momentum
         # to avoid collapse
+
+        # l2-normalization is part of the projection head in the original implementation
+        projections_1 = tf.math.l2_normalize(projections_1, axis=1)
+        projections_2 = tf.math.l2_normalize(projections_2, axis=1)
+        m_projections_1 = tf.math.l2_normalize(m_projections_1, axis=1)
+        m_projections_2 = tf.math.l2_normalize(m_projections_2, axis=1)
+
         center = tf.reduce_mean(
             tf.concat([m_projections_1, m_projections_2], axis=0), axis=0, keepdims=True
         )
