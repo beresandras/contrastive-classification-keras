@@ -4,6 +4,7 @@ This repository contains an implementation for 4 self-supervised instance-level 
 - [SimCLR](https://arxiv.org/abs/2002.05709)
 - [MoCo](https://arxiv.org/abs/1911.05722) ([v2](https://arxiv.org/abs/2003.04297), [v3](https://arxiv.org/abs/2104.02057))
 - [BarlowTwins](https://arxiv.org/abs/2103.03230)
+- [NNCLR](https://arxiv.org/abs/2104.14548)
 - [DINO](https://arxiv.org/abs/2104.14294) (negative-free)
 
 Try it out in a Colab Notebook (one training takes 40-60 minutes): [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/beresandras/contrastive-classification-keras/blob/master/contrastive_classification_keras.ipynb)
