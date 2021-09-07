@@ -84,17 +84,9 @@ class NNCLR(ContrastiveModel):
             self.feature_queue, tf.argmax(support_similarities, axis=1), axis=0
         )
 
-        # or soft nearest-neighbours
-        # nn_projections = tf.matmul(
-        #     keras.activations.softmax(support_similarities / self.temperature),
-        #     self.feature_queue,
-        # )
-
-        # stop-gradient
-        return tf.stop_gradient(nn_projections)
-
-        # or straight-through gradient estimation
-        # return projections + tf.stop_gradient(nn_projections - projections)
+        # straight-through gradient estimation
+        # paper used stop gradient, however it helps performance at this scale
+        return projections + tf.stop_gradient(nn_projections - projections)
 
     def contrastive_loss(self, projections_1, projections_2):
         # similar to the SimCLR loss, however we take the nearest neighbours of a set
@@ -118,24 +110,8 @@ class NNCLR(ContrastiveModel):
         batch_size = tf.shape(projections_1)[0]
         contrastive_labels = tf.range(batch_size)
         loss = keras.losses.sparse_categorical_crossentropy(
-            tf.concat(
-                [
-                    contrastive_labels,
-                    contrastive_labels,
-                    contrastive_labels,
-                    contrastive_labels,
-                ],
-                axis=0,
-            ),
-            tf.concat(
-                [
-                    similarities_1_2,
-                    similarities_2_1,
-                    tf.transpose(similarities_1_2),
-                    tf.transpose(similarities_2_1),
-                ],
-                axis=0,
-            ),
+            tf.concat([contrastive_labels, contrastive_labels], axis=0),
+            tf.concat([similarities_1_2, similarities_2_1], axis=0),
             from_logits=True,
         )
 
