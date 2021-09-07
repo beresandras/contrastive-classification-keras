@@ -45,6 +45,107 @@ class SimCLR(ContrastiveModel):
         return loss
 
 
+class NNCLR(ContrastiveModel):
+    def __init__(
+        self,
+        contrastive_augmenter,
+        classification_augmenter,
+        encoder,
+        projection_head,
+        linear_probe,
+        temperature,
+        queue_size,
+    ):
+        super().__init__(
+            contrastive_augmenter,
+            classification_augmenter,
+            encoder,
+            projection_head,
+            linear_probe,
+        )
+        self.temperature = temperature
+
+        feature_dimensions = encoder.output_shape[1]
+        self.feature_queue = tf.Variable(
+            tf.math.l2_normalize(
+                tf.random.normal(shape=(queue_size, feature_dimensions)), axis=1
+            ),
+            trainable=False,
+        )
+
+    def nearest_neighbour(self, projections):
+        # highest cosine similarity == lowest L2 distance, for L2 normalized features
+        support_similarities = tf.matmul(
+            projections, self.feature_queue, transpose_b=True
+        )
+
+        # hard nearest-neighbours
+        nn_projections = tf.gather(
+            self.feature_queue, tf.argmax(support_similarities, axis=1), axis=0
+        )
+
+        # or soft nearest-neighbours
+        # nn_projections = tf.matmul(
+        #     keras.activations.softmax(support_similarities / self.temperature),
+        #     self.feature_queue,
+        # )
+
+        # stop-gradient
+        return tf.stop_gradient(nn_projections)
+
+        # or straight-through gradient estimation
+        # return projections + tf.stop_gradient(nn_projections - projections)
+
+    def contrastive_loss(self, projections_1, projections_2):
+        # similar to the SimCLR loss, however we take the nearest neighbours of a set
+        # of projections from a feature queue
+        projections_1 = tf.math.l2_normalize(projections_1, axis=1)
+        projections_2 = tf.math.l2_normalize(projections_2, axis=1)
+
+        similarities_1_2 = (
+            tf.matmul(
+                self.nearest_neighbour(projections_1), projections_2, transpose_b=True
+            )
+            / self.temperature
+        )
+        similarities_2_1 = (
+            tf.matmul(
+                self.nearest_neighbour(projections_2), projections_1, transpose_b=True
+            )
+            / self.temperature
+        )
+
+        batch_size = tf.shape(projections_1)[0]
+        contrastive_labels = tf.range(batch_size)
+        loss = keras.losses.sparse_categorical_crossentropy(
+            tf.concat(
+                [
+                    contrastive_labels,
+                    contrastive_labels,
+                    contrastive_labels,
+                    contrastive_labels,
+                ],
+                axis=0,
+            ),
+            tf.concat(
+                [
+                    similarities_1_2,
+                    similarities_2_1,
+                    tf.transpose(similarities_1_2),
+                    tf.transpose(similarities_2_1),
+                ],
+                axis=0,
+            ),
+            from_logits=True,
+        )
+
+        # feature queue update
+        self.feature_queue.assign(
+            tf.concat([projections_1, self.feature_queue[:-batch_size]], axis=0)
+        )
+        return loss
+
+
 class BarlowTwins(ContrastiveModel):
     def __init__(
         self,

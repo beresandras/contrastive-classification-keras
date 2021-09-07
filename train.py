@@ -10,7 +10,7 @@ from tensorflow.keras.layers.experimental import preprocessing
 
 from dataset import prepare_dataset
 from augmentations import RandomResizedCrop, RandomColorJitter
-from algorithms import SimCLR, BarlowTwins, MoCo, DINO
+from algorithms import SimCLR, NNCLR, BarlowTwins, MoCo, DINO
 
 tf.get_logger().setLevel("WARN")  # suppress info-level logs
 
@@ -22,6 +22,7 @@ width = 128
 # hyperparameters corresponding to each algorithm
 hyperparams = {
     SimCLR: {"temperature": 0.1},
+    NNCLR: {"temperature": 0.1, "queue_size": 10000},
     BarlowTwins: {"redundancy_reduction_weight": 10.0},
     MoCo: {"momentum_coeff": 0.99, "temperature": 0.1, "queue_size": 10000},
     DINO: {"momentum_coeff": 0.9, "temperature": 0.1, "sharpening": 0.5},
@@ -33,7 +34,7 @@ batch_size, train_dataset, labeled_train_dataset, test_dataset = prepare_dataset
 )
 
 # select an algorithm
-Algorithm = SimCLR  # SimCLR, BarlowTwins, MoCo, DINO
+Algorithm = SimCLR
 
 # architecture
 model = Algorithm(
