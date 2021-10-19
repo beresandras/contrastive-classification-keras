@@ -122,6 +122,56 @@ class NNCLR(ContrastiveModel):
         return loss
 
 
+class DCCLR(ContrastiveModel):
+    def __init__(
+        self,
+        contrastive_augmenter,
+        classification_augmenter,
+        encoder,
+        projection_head,
+        linear_probe,
+        temperature,
+    ):
+        super().__init__(
+            contrastive_augmenter,
+            classification_augmenter,
+            encoder,
+            projection_head,
+            linear_probe,
+        )
+        self.temperature = temperature
+
+    def contrastive_loss(self, projections_1, projections_2):
+        # a modified InfoNCE loss, which should provide better performance at
+        # lower batch sizes
+
+        # cosine similarity: the dot product of the l2-normalized feature vectors
+        projections_1 = tf.math.l2_normalize(projections_1, axis=1)
+        projections_2 = tf.math.l2_normalize(projections_2, axis=1)
+        similarities = (
+            tf.matmul(projections_1, projections_2, transpose_b=True) / self.temperature
+        )
+
+        # the similarities of the positives (the main diagonal) are masked and
+        # are not included in the softmax normalization
+        batch_size = tf.shape(projections_1)[0]
+        decoupling_mask = 1.0 - tf.eye(batch_size)
+        decoupled_similarities = decoupling_mask * tf.exp(similarities)
+
+        loss = tf.reduce_mean(
+            -tf.linalg.diag_part(similarities)
+            + tf.math.log(
+                tf.reduce_sum(decoupled_similarities, axis=0)
+                + tf.reduce_sum(decoupled_similarities, axis=1)
+            )
+        )
+        # the sum along the two axes should be put in separate log-sum-exp
+        # expressions according to the paper, this however achieves slightly
+        # higher performance at this scale
+
+        return loss
+
+
 class BarlowTwins(ContrastiveModel):
     def __init__(
         self,
