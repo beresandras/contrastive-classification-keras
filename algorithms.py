@@ -208,7 +208,65 @@ class BarlowTwins(ContrastiveModel):
         cross_correlation = (
             tf.matmul(projections_1, projections_2, transpose_a=True) / batch_size
         )
-        squared_errors = (tf.eye(feature_dim) - cross_correlation) ** 2
+        target_cross_correlation = tf.eye(feature_dim)
+        squared_errors = (target_cross_correlation - cross_correlation) ** 2
+
+        # invariance loss = average diagonal error
+        # redundancy reduction loss = average off-diagonal error
+        invariance_loss = (
+            tf.reduce_sum(squared_errors * tf.eye(feature_dim)) / feature_dim
+        )
+        redundancy_reduction_loss = tf.reduce_sum(
+            squared_errors * (1 - tf.eye(feature_dim))
+        ) / (feature_dim * (feature_dim - 1))
+        return (
+            invariance_loss
+            + self.redundancy_reduction_weight * redundancy_reduction_loss
+        )
+
+
+class HSICTwins(ContrastiveModel):
+    def __init__(
+        self,
+        contrastive_augmenter,
+        classification_augmenter,
+        encoder,
+        projection_head,
+        linear_probe,
+        redundancy_reduction_weight,
+    ):
+        super().__init__(
+            contrastive_augmenter,
+            classification_augmenter,
+            encoder,
+            projection_head,
+            linear_probe,
+        )
+        # weighting coefficient between the two loss components
+        self.redundancy_reduction_weight = redundancy_reduction_weight
+        # its value differs from the paper, because the loss implementation has been
+        # changed to be invariant to the encoder output dimensions (feature dim)
+
+    def contrastive_loss(self, projections_1, projections_2):
+        # a modified BarlowTwins loss, derived from Hilbert-Schmidt Independence
+        # Criterion maximization, the only difference is the target cross correlation
+
+        projections_1 = (
+            projections_1 - tf.reduce_mean(projections_1, axis=0)
+        ) / tf.math.reduce_std(projections_1, axis=0)
+        projections_2 = (
+            projections_2 - tf.reduce_mean(projections_2, axis=0)
+        ) / tf.math.reduce_std(projections_2, axis=0)
+
+        # the cross correlation of image representations should be 1 along the diagonal
+        # and -1 everywhere else
+        batch_size = tf.shape(projections_1, out_type=tf.float32)[0]
+        feature_dim = tf.shape(projections_1, out_type=tf.float32)[1]
+        cross_correlation = (
+            tf.matmul(projections_1, projections_2, transpose_a=True) / batch_size
+        )
+        target_cross_correlation = 2.0 * tf.eye(feature_dim) - 1.0
+        squared_errors = (target_cross_correlation - cross_correlation) ** 2
 
         # invariance loss = average diagonal error
         # redundancy reduction loss = average off-diagonal error
