@@ -300,7 +300,7 @@ class TWIST(ContrastiveModel):
         )
 
     def contrastive_loss(self, projections_1, projections_2):
-        # a probabilistic hyperparameter-free self-supervised losss
+        # a probabilistic, hyperparameter- and negative-free loss
 
         # batch normalization before softmax operation
         projections_1 = (

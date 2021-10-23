@@ -1,14 +1,17 @@
 # Self-supervised Contrastive Learning for Image Classification with Keras
 
-This repository contains an implementation for 8 self-supervised instance-level (image-level) contrastive learning methods:
-- [SimCLR](https://arxiv.org/abs/2002.05709)
-- [NNCLR](https://arxiv.org/abs/2104.14548)
-- [Decoupled Contrastive Learning](https://arxiv.org/abs/2110.06848) (named DCCLR in this repository)
-- [BarlowTwins](https://arxiv.org/abs/2103.03230)
-- [Hilbert-Schmidt Independence Criterion Maximization](https://arxiv.org/abs/2104.13712) (named HSICTwins in this repository)
-- [TWIST](https://arxiv.org/abs/2110.07402)
-- [MoCo](https://arxiv.org/abs/1911.05722) ([v2](https://arxiv.org/abs/2003.04297), [v3](https://arxiv.org/abs/2104.02057))
-- [DINO](https://arxiv.org/abs/2104.14294) (negative-free)
+This repository contains an implementation for 8 self-supervised instance-level (image-level) representation learning methods:
+- Contrastive:
+    - [MoCo](https://arxiv.org/abs/1911.05722) ([v2](https://arxiv.org/abs/2003.04297), [v3](https://arxiv.org/abs/2104.02057))
+    - [SimCLR](https://arxiv.org/abs/2002.05709)
+    - [NNCLR](https://arxiv.org/abs/2104.14548)
+    - [Decoupled Contrastive Learning](https://arxiv.org/abs/2110.06848) (named DCCLR in this repository)
+- Redundancy-reducing:
+    - [BarlowTwins](https://arxiv.org/abs/2103.03230)
+    - [Hilbert-Schmidt Independence Criterion Maximization](https://arxiv.org/abs/2104.13712) (named HSICTwins in this repository)
+- Negative-free:
+    - [DINO](https://arxiv.org/abs/2104.14294)
+    - [TWIST](https://arxiv.org/abs/2110.07402)
 
 Try it out in a Colab Notebook (one training takes 40-60 minutes): [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/beresandras/contrastive-classification-keras/blob/master/contrastive_classification_keras.ipynb)
 
