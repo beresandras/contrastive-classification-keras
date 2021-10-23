@@ -1,11 +1,12 @@
 # Self-supervised Contrastive Learning for Image Classification with Keras
 
-This repository contains an implementation for 7 self-supervised instance-level (image-level) contrastive learning methods:
+This repository contains an implementation for 8 self-supervised instance-level (image-level) contrastive learning methods:
 - [SimCLR](https://arxiv.org/abs/2002.05709)
 - [NNCLR](https://arxiv.org/abs/2104.14548)
 - [Decoupled Contrastive Learning](https://arxiv.org/abs/2110.06848) (named DCCLR in this repository)
 - [BarlowTwins](https://arxiv.org/abs/2103.03230)
 - [Hilbert-Schmidt Independence Criterion Maximization](https://arxiv.org/abs/2104.13712) (named HSICTwins in this repository)
+- [TWIST](https://arxiv.org/abs/2110.07402)
 - [MoCo](https://arxiv.org/abs/1911.05722) ([v2](https://arxiv.org/abs/2003.04297), [v3](https://arxiv.org/abs/2104.02057))
 - [DINO](https://arxiv.org/abs/2104.14294) (negative-free)
 

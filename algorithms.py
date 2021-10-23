@@ -282,6 +282,52 @@ class HSICTwins(ContrastiveModel):
         )
 
 
+class TWIST(ContrastiveModel):
+    def __init__(
+        self,
+        contrastive_augmenter,
+        classification_augmenter,
+        encoder,
+        projection_head,
+        linear_probe,
+    ):
+        super().__init__(
+            contrastive_augmenter,
+            classification_augmenter,
+            encoder,
+            projection_head,
+            linear_probe,
+        )
+
+    def contrastive_loss(self, projections_1, projections_2):
+        # a probabilistic hyperparameter-free self-supervised losss
+
+        # batch normalization before softmax operation
+        projections_1 = (
+            projections_1 - tf.reduce_mean(projections_1, axis=0)
+        ) / tf.math.reduce_std(projections_1, axis=0)
+        projections_2 = (
+            projections_2 - tf.reduce_mean(projections_2, axis=0)
+        ) / tf.math.reduce_std(projections_2, axis=0)
+
+        probabilities_1 = keras.activations.softmax(projections_1)
+        probabilities_2 = keras.activations.softmax(projections_2)
+
+        mean_probabilities_1 = tf.reduce_mean(probabilities_1, axis=0)
+        mean_probabilities_2 = tf.reduce_mean(probabilities_2, axis=0)
+
+        # cross-entropy(1,2): KL-div(1,2) (consistency) + entropy(1) (sharpness)
+        # -cross-entropy(mean1,mean1): -entropy(mean1) (diversity)
+        loss = keras.losses.categorical_crossentropy(
+            tf.concat([probabilities_1, probabilities_2], axis=0),
+            tf.concat([probabilities_2, probabilities_1], axis=0),
+        ) - keras.losses.categorical_crossentropy(
+            tf.concat([mean_probabilities_1, mean_probabilities_2], axis=0),
+            tf.concat([mean_probabilities_1, mean_probabilities_2], axis=0),
+        )
+        return loss
+
+
 class MoCo(MomentumContrastiveModel):
     def __init__(
         self,
